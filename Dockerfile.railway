@@ -22,6 +22,8 @@ RUN test -f server/dist/index.js
 FROM node:22-bookworm
 ENV NODE_ENV=production
 ENV CLAUDE_CODE_BUBBLEWRAP=1
+ENV NODE_OPTIONS=--max-old-space-size=192
+ENV MALLOC_ARENA_MAX=2
 ENV HOME=/paperclip \
     PAPERCLIP_HOME=/paperclip \
     PAPERCLIP_INSTANCE_ID=default \

@@ -1,6 +1,10 @@
 import { asBoolean, asString, asStringArray } from "@paperclipai/adapter-utils/server-utils";
 import {
+  CODEX_LOCAL_MODELARK_MODEL,
+  CODEX_LOCAL_PROVIDER_MODELARK,
   CODEX_LOCAL_FAST_MODE_SUPPORTED_MODELS,
+  DEFAULT_CODEX_LOCAL_CHEAP_MODEL,
+  DEFAULT_CODEX_LOCAL_MODEL,
   isCodexLocalFastModeSupported,
 } from "../index.js";
 import { buildCodexModelProviderArgs, resolveCodexLocalModelProvider } from "./codex-provider.js";
@@ -29,6 +33,16 @@ function formatFastModeSupportedModels(): string {
   return `${CODEX_LOCAL_FAST_MODE_SUPPORTED_MODELS.join(", ")} or manually configured model IDs`;
 }
 
+function normalizeModelForProvider(model: string, provider: ReturnType<typeof resolveCodexLocalModelProvider>): string {
+  if (
+    provider?.id === CODEX_LOCAL_PROVIDER_MODELARK &&
+    (!model || model === DEFAULT_CODEX_LOCAL_MODEL || model === DEFAULT_CODEX_LOCAL_CHEAP_MODEL)
+  ) {
+    return CODEX_LOCAL_MODELARK_MODEL;
+  }
+  return model;
+}
+
 export function buildCodexExecArgs(
   config: unknown,
   options: {
@@ -37,20 +51,21 @@ export function buildCodexExecArgs(
   } = {},
 ): BuildCodexExecArgsResult {
   const record = asRecord(config);
-  const model = asString(record.model, "").trim();
+  const configuredModel = asString(record.model, "").trim();
   const modelReasoningEffort = asString(
     record.modelReasoningEffort,
     asString(record.reasoningEffort, ""),
   ).trim();
   const search = asBoolean(record.search, false);
   const fastModeRequested = asBoolean(record.fastMode, false);
-  const fastModeApplied = fastModeRequested && isCodexLocalFastModeSupported(model);
   const bypass = asBoolean(
     record.dangerouslyBypassApprovalsAndSandbox,
     asBoolean(record.dangerouslyBypassSandbox, false),
   );
   const extraArgs = readExtraArgs(record);
   const modelProvider = resolveCodexLocalModelProvider(record);
+  const model = normalizeModelForProvider(configuredModel, modelProvider);
+  const fastModeApplied = fastModeRequested && isCodexLocalFastModeSupported(model);
 
   const args = ["exec", "--json"];
   if (options.skipGitRepoCheck) args.push("--skip-git-repo-check");

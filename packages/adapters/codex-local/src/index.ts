@@ -6,6 +6,7 @@ export const label = "Codex (local)";
 export const SANDBOX_INSTALL_COMMAND = "npm install -g @openai/codex";
 
 export const DEFAULT_CODEX_LOCAL_MODEL = "gpt-5.3-codex";
+export const DEFAULT_CODEX_LOCAL_CHEAP_MODEL = "gpt-5.3-codex-spark";
 export const DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX = true;
 export const CODEX_LOCAL_FAST_MODE_SUPPORTED_MODELS = ["gpt-5.4"] as const;
 export const CODEX_LOCAL_PROVIDER_OPENAI = "openai";
@@ -44,7 +45,7 @@ export function isCodexLocalFastModeSupported(model: string | null | undefined):
 export const models = [
   { id: "gpt-5.4", label: "gpt-5.4" },
   { id: DEFAULT_CODEX_LOCAL_MODEL, label: DEFAULT_CODEX_LOCAL_MODEL },
-  { id: "gpt-5.3-codex-spark", label: "gpt-5.3-codex-spark" },
+  { id: DEFAULT_CODEX_LOCAL_CHEAP_MODEL, label: DEFAULT_CODEX_LOCAL_CHEAP_MODEL },
   { id: "gpt-5", label: "gpt-5" },
   { id: "o3", label: "o3" },
   { id: "o4-mini", label: "o4-mini" },
@@ -60,7 +61,7 @@ export const modelProfiles: AdapterModelProfileDefinition[] = [
     label: "Cheap",
     description: "Use the lowest-cost known Codex local model lane without changing the primary model.",
     adapterConfig: {
-      model: "gpt-5.3-codex-spark",
+      model: DEFAULT_CODEX_LOCAL_CHEAP_MODEL,
       // Spark is the cheap lane by model price; high effort keeps Codex coding behavior usable for delegated work.
       modelReasoningEffort: "high",
     },

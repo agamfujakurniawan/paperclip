@@ -17,6 +17,7 @@ const NOT_ONBOARDED_CACHE_MS = 10 * 1000;
 
 let paperclipProc = null;
 let onboardedCache = { value: null, at: 0 };
+let paperclipRestartDelayMs = 2000;
 
 function railwayPublicUrl() {
   const explicit = process.env.PAPERCLIP_PUBLIC_URL ?? process.env.BETTER_AUTH_BASE_URL;
@@ -32,6 +33,9 @@ function paperclipChildEnv() {
     HOST: INTERNAL_HOST,
     PORT: String(INTERNAL_PORT),
     PAPERCLIP_OPEN_ON_LISTEN: "false",
+    PAPERCLIP_MIGRATION_AUTO_APPLY: process.env.PAPERCLIP_MIGRATION_AUTO_APPLY ?? "true",
+    NODE_OPTIONS: process.env.NODE_OPTIONS ?? "--max-old-space-size=192",
+    MALLOC_ARENA_MAX: process.env.MALLOC_ARENA_MAX ?? "2",
     ...(publicUrl && !process.env.PAPERCLIP_PUBLIC_URL ? { PAPERCLIP_PUBLIC_URL: publicUrl } : {}),
     ...(publicUrl && !process.env.BETTER_AUTH_BASE_URL ? { BETTER_AUTH_BASE_URL: publicUrl } : {}),
   };
@@ -39,15 +43,22 @@ function paperclipChildEnv() {
 
 function startPaperclip() {
   if (paperclipProc) return;
-  paperclipProc = spawn("tsx", ["server/dist/index.js"], {
+  paperclipProc = spawn("node", ["--import", "./server/node_modules/tsx/dist/loader.mjs", "server/dist/index.js"], {
     cwd: APP_ROOT,
     env: paperclipChildEnv(),
     stdio: "inherit",
   });
   paperclipProc.on("exit", (code, signal) => {
     console.error(`[paperclip] exited code=${code} signal=${signal}`);
+    if (code === 137) {
+      console.error(
+        "[paperclip] exit code 137 usually means the internal server was SIGKILLed by the platform, most often due to memory/OOM. Increase Railway memory or lower NODE_OPTIONS.",
+      );
+    }
     paperclipProc = null;
-    setTimeout(startPaperclip, 2000);
+    const delay = paperclipRestartDelayMs;
+    paperclipRestartDelayMs = Math.min(paperclipRestartDelayMs * 2, 30000);
+    setTimeout(startPaperclip, delay);
   });
 }
 

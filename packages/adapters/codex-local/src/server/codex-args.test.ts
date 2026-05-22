@@ -7,6 +7,7 @@ import {
   CODEX_LOCAL_MODELARK_PROVIDER_NAME,
   CODEX_LOCAL_PROVIDER_CUSTOM_OPENAI,
   CODEX_LOCAL_PROVIDER_MODELARK,
+  DEFAULT_CODEX_LOCAL_CHEAP_MODEL,
 } from "../index.js";
 import { buildCodexExecArgs } from "./codex-args.js";
 
@@ -106,6 +107,35 @@ describe("buildCodexExecArgs", () => {
       "--json",
       "--model",
       CODEX_LOCAL_MODELARK_MODEL,
+      "-c",
+      `model_provider=${JSON.stringify(CODEX_LOCAL_MODELARK_PROVIDER_ID)}`,
+      "-c",
+      `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.name=${JSON.stringify(CODEX_LOCAL_MODELARK_PROVIDER_NAME)}`,
+      "-c",
+      `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.base_url=${JSON.stringify(CODEX_LOCAL_MODELARK_BASE_URL)}`,
+      "-c",
+      `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.env_key=${JSON.stringify(CODEX_LOCAL_MODELARK_ENV_KEY)}`,
+      "-c",
+      `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.wire_api="responses"`,
+      "-",
+    ]);
+  });
+
+  it("normalizes the OpenAI cheap model fallback to the ModelArk preset model", () => {
+    const result = buildCodexExecArgs({
+      codexProvider: CODEX_LOCAL_PROVIDER_MODELARK,
+      model: DEFAULT_CODEX_LOCAL_CHEAP_MODEL,
+      modelReasoningEffort: "high",
+    });
+
+    expect(result.model).toBe(CODEX_LOCAL_MODELARK_MODEL);
+    expect(result.args).toEqual([
+      "exec",
+      "--json",
+      "--model",
+      CODEX_LOCAL_MODELARK_MODEL,
+      "-c",
+      'model_reasoning_effort="high"',
       "-c",
       `model_provider=${JSON.stringify(CODEX_LOCAL_MODELARK_PROVIDER_ID)}`,
       "-c",

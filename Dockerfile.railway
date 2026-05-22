@@ -1,0 +1,64 @@
+# Railway-specific image that mirrors the known-good template flow while
+# building Paperclip from this checkout instead of cloning an upstream tag.
+FROM node:22-bookworm AS paperclip-build
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    python3 \
+    ripgrep \
+    && rm -rf /var/lib/apt/lists/*
+RUN corepack enable
+
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @paperclipai/ui build
+RUN pnpm --filter @paperclipai/plugin-sdk build
+RUN pnpm --filter @paperclipai/server build
+RUN test -f server/dist/index.js
+
+FROM node:22-bookworm
+ENV NODE_ENV=production
+ENV CLAUDE_CODE_BUBBLEWRAP=1
+ENV HOME=/paperclip \
+    PAPERCLIP_HOME=/paperclip \
+    PAPERCLIP_INSTANCE_ID=default \
+    PAPERCLIP_CONFIG=/paperclip/instances/default/config.json \
+    PAPERCLIP_DEPLOYMENT_MODE=authenticated \
+    PAPERCLIP_DEPLOYMENT_EXPOSURE=private \
+    SERVE_UI=true \
+    OPENCODE_ALLOW_ALL_MODELS=true
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    jq \
+    openssh-client \
+    python3 \
+    ripgrep \
+    && rm -rf /var/lib/apt/lists/*
+RUN corepack enable
+
+WORKDIR /app
+COPY --from=paperclip-build /app /app
+
+WORKDIR /wrapper
+COPY deploy/railway/package.json /wrapper/package.json
+RUN npm install --omit=dev && npm cache clean --force
+COPY deploy/railway/src /wrapper/src
+COPY deploy/railway/scripts/entrypoint.sh /wrapper/entrypoint.sh
+COPY deploy/railway/scripts/bootstrap-ceo.mjs /wrapper/template/bootstrap-ceo.mjs
+RUN chmod +x /wrapper/entrypoint.sh
+
+RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai
+RUN npm install --global --omit=dev tsx
+RUN mkdir -p /paperclip \
+    && chown -R node:node /app /paperclip /wrapper
+
+EXPOSE 3100
+ENTRYPOINT ["/wrapper/entrypoint.sh"]
+CMD ["node", "/wrapper/src/server.js"]

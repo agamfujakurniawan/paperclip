@@ -20,7 +20,7 @@ let onboardedCache = { value: null, at: 0 };
 
 function railwayPublicUrl() {
   const explicit = process.env.PAPERCLIP_PUBLIC_URL ?? process.env.BETTER_AUTH_BASE_URL;
-  if (explicit?.trim()) return explicit.trim().replace(/\/+$/, "");
+  if (explicit?.trim() && !explicit.includes("${{")) return explicit.trim().replace(/\/+$/, "");
   const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
   return railwayDomain ? `https://${railwayDomain}` : null;
 }
@@ -380,6 +380,11 @@ app.post("/setup/api/codex-login", async (_req, res) => {
 app.use(async (req, res, next) => {
   const requestPath = (req.path || "/").replace(/\/+$/, "") || "/";
   if (req.method !== "GET" || requestPath !== "/") return next();
+  const ready = await isPaperclipReady();
+  if (!ready) {
+    res.redirect(302, "/setup");
+    return;
+  }
   const onboarded = await hasInstanceAdmin();
   if (!onboarded) {
     res.redirect(302, "/setup");

@@ -34,7 +34,7 @@ function paperclipChildEnv() {
     PORT: String(INTERNAL_PORT),
     PAPERCLIP_OPEN_ON_LISTEN: "false",
     PAPERCLIP_MIGRATION_AUTO_APPLY: process.env.PAPERCLIP_MIGRATION_AUTO_APPLY ?? "true",
-    NODE_OPTIONS: process.env.NODE_OPTIONS ?? "--max-old-space-size=192",
+    NODE_OPTIONS: process.env.NODE_OPTIONS ?? "--max-old-space-size=512",
     MALLOC_ARENA_MAX: process.env.MALLOC_ARENA_MAX ?? "2",
     ...(publicUrl && !process.env.PAPERCLIP_PUBLIC_URL ? { PAPERCLIP_PUBLIC_URL: publicUrl } : {}),
     ...(publicUrl && !process.env.BETTER_AUTH_BASE_URL ? { BETTER_AUTH_BASE_URL: publicUrl } : {}),
@@ -43,9 +43,11 @@ function paperclipChildEnv() {
 
 function startPaperclip() {
   if (paperclipProc) return;
+  const childEnv = paperclipChildEnv();
+  console.log(`[wrapper] starting Paperclip internal server with NODE_OPTIONS=${childEnv.NODE_OPTIONS || "(unset)"}`);
   paperclipProc = spawn("node", ["--import", "./server/node_modules/tsx/dist/loader.mjs", "server/dist/index.js"], {
     cwd: APP_ROOT,
-    env: paperclipChildEnv(),
+    env: childEnv,
     stdio: "inherit",
   });
   paperclipProc.on("exit", (code, signal) => {

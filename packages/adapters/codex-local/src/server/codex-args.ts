@@ -3,6 +3,7 @@ import {
   CODEX_LOCAL_FAST_MODE_SUPPORTED_MODELS,
   isCodexLocalFastModeSupported,
 } from "../index.js";
+import { buildCodexModelProviderArgs, resolveCodexLocalModelProvider } from "./codex-provider.js";
 
 export type BuildCodexExecArgsResult = {
   args: string[];
@@ -49,6 +50,7 @@ export function buildCodexExecArgs(
     asBoolean(record.dangerouslyBypassSandbox, false),
   );
   const extraArgs = readExtraArgs(record);
+  const modelProvider = resolveCodexLocalModelProvider(record);
 
   const args = ["exec", "--json"];
   if (options.skipGitRepoCheck) args.push("--skip-git-repo-check");
@@ -61,6 +63,7 @@ export function buildCodexExecArgs(
   if (fastModeApplied) {
     args.push("-c", 'service_tier="fast"', "-c", "features.fast_mode=true");
   }
+  if (modelProvider) args.push(...buildCodexModelProviderArgs(modelProvider));
   if (extraArgs.length > 0) args.push(...extraArgs);
   if (options.resumeSessionId) args.push("resume", options.resumeSessionId, "-");
   else args.push("-");

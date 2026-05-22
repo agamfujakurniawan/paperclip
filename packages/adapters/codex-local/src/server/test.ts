@@ -25,6 +25,7 @@ import { SANDBOX_INSTALL_COMMAND } from "../index.js";
 import { codexHomeDir, readCodexAuthInfo } from "./quota.js";
 import { buildCodexExecArgs } from "./codex-args.js";
 import { prepareManagedCodexHome } from "./codex-home.js";
+import { resolveCodexLocalModelProvider } from "./codex-provider.js";
 
 function summarizeStatus(checks: AdapterEnvironmentCheck[]): AdapterEnvironmentTestResult["status"] {
   if (checks.some((check) => check.level === "error")) return "fail";
@@ -228,9 +229,31 @@ export async function testEnvironment(
     });
   }
 
+  const modelProvider = resolveCodexLocalModelProvider(config);
   const configOpenAiKey = env.OPENAI_API_KEY;
   const hostOpenAiKey = targetIsRemote ? undefined : process.env.OPENAI_API_KEY;
-  if (isNonEmpty(configOpenAiKey) || isNonEmpty(hostOpenAiKey)) {
+  const providerEnvKey = modelProvider?.envKey ?? "OPENAI_API_KEY";
+  const configProviderKey = env[providerEnvKey];
+  const hostProviderKey = targetIsRemote ? undefined : process.env[providerEnvKey];
+  const providerApiKeyPresent = isNonEmpty(configProviderKey) || isNonEmpty(hostProviderKey);
+  if (modelProvider) {
+    if (providerApiKeyPresent) {
+      const source = isNonEmpty(configProviderKey) ? "adapter config env" : "server environment";
+      checks.push({
+        code: "codex_provider_api_key_present",
+        level: "info",
+        message: `${providerEnvKey} is set for Codex provider ${modelProvider.id}.`,
+        detail: `Detected in ${source}.`,
+      });
+    } else if (!targetIsRemote) {
+      checks.push({
+        code: "codex_provider_api_key_missing",
+        level: "warn",
+        message: `${providerEnvKey} is not set. Codex runs may fail until authentication is configured for provider ${modelProvider.id}.`,
+        hint: `Set ${providerEnvKey} in adapter env or the server environment.`,
+      });
+    }
+  } else if (isNonEmpty(configOpenAiKey) || isNonEmpty(hostOpenAiKey)) {
     const source = isNonEmpty(configOpenAiKey) ? "adapter config env" : "server environment";
     checks.push({
       code: "codex_openai_api_key_present",
@@ -299,11 +322,13 @@ export async function testEnvironment(
       // wrap the probe with a shell that materializes a per-run auth.json so
       // the CLI can authenticate. The key content is passed via env (not on
       // the command line) to avoid leaking it into process listings.
-      const probeApiKey = isNonEmpty(configOpenAiKey)
-        ? configOpenAiKey
-        : isNonEmpty(hostOpenAiKey)
-          ? hostOpenAiKey
-          : null;
+      const probeApiKey = modelProvider
+        ? null
+        : isNonEmpty(configOpenAiKey)
+          ? configOpenAiKey
+          : isNonEmpty(hostOpenAiKey)
+            ? hostOpenAiKey
+            : null;
       const preparedProbe = await prepareCodexHelloProbe({
         runId,
         companyId: ctx.companyId,
@@ -363,9 +388,11 @@ export async function testEnvironment(
             level: "warn",
             message: "Codex CLI is installed, but authentication is not ready.",
             ...(detail ? { detail } : {}),
-            hint: probeApiKey
-              ? "OPENAI_API_KEY was provided but Codex still rejected the request. Verify the key is valid for the OpenAI Responses API (e.g. `curl -H \"Authorization: Bearer $OPENAI_API_KEY\" https://api.openai.com/v1/models`), or run `codex login` and seed `~/.codex/auth.json`."
-              : "Codex CLI does not read OPENAI_API_KEY from the environment; set OPENAI_API_KEY in this adapter's config (so Paperclip writes it to `$CODEX_HOME/auth.json`) or run `codex login` on the host first.",
+            hint: modelProvider
+              ? `${providerEnvKey} was configured as Codex provider ${modelProvider.id}'s env_key, but Codex still rejected the request. Verify the key and base URL for that OpenAI-compatible provider.`
+              : probeApiKey
+                ? "OPENAI_API_KEY was provided but Codex still rejected the request. Verify the key is valid for the OpenAI Responses API (e.g. `curl -H \"Authorization: Bearer $OPENAI_API_KEY\" https://api.openai.com/v1/models`), or run `codex login` and seed `~/.codex/auth.json`."
+                : "Codex CLI does not read OPENAI_API_KEY from the environment; set OPENAI_API_KEY in this adapter's config (so Paperclip writes it to `$CODEX_HOME/auth.json`) or run `codex login` on the host first.",
           });
         } else {
           checks.push({

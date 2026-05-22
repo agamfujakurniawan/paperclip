@@ -8,6 +8,15 @@ export const SANDBOX_INSTALL_COMMAND = "npm install -g @openai/codex";
 export const DEFAULT_CODEX_LOCAL_MODEL = "gpt-5.3-codex";
 export const DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX = true;
 export const CODEX_LOCAL_FAST_MODE_SUPPORTED_MODELS = ["gpt-5.4"] as const;
+export const CODEX_LOCAL_PROVIDER_OPENAI = "openai";
+export const CODEX_LOCAL_PROVIDER_MODELARK = "modelark";
+export const CODEX_LOCAL_PROVIDER_CUSTOM_OPENAI = "custom_openai";
+export const CODEX_LOCAL_MODELARK_MODEL = "deepseek-v3-2-251201";
+export const CODEX_LOCAL_MODELARK_PROVIDER_ID = "modelark";
+export const CODEX_LOCAL_MODELARK_PROVIDER_NAME = "BytePlus ModelArk";
+export const CODEX_LOCAL_MODELARK_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
+export const CODEX_LOCAL_MODELARK_ENV_KEY = "ARK_API_KEY";
+export const CODEX_LOCAL_DEFAULT_PROVIDER_WIRE_API = "responses";
 
 function normalizeModelId(model: string | null | undefined): string {
   return typeof model === "string" ? model.trim() : "";
@@ -67,6 +76,8 @@ Core fields:
 - cwd (string, optional): default absolute working directory fallback for the agent process (created if missing when possible)
 - instructionsFilePath (string, optional): absolute path to a markdown instructions file prepended to stdin prompt at runtime
 - model (string, optional): Codex model id
+- codexProvider (string, optional): OpenAI-compatible provider mode (openai|modelark|custom_openai); omitted/openai keeps Codex's default OpenAI behavior
+- codexProviderId/name/baseUrl/envKey/wireApi (strings, optional): custom_openai provider details passed to Codex as model_providers.<id> overrides
 - modelReasoningEffort (string, optional): reasoning effort override (minimal|low|medium|high|xhigh) passed via -c model_reasoning_effort=...
 - promptTemplate (string, optional): run prompt template
 - search (boolean, optional): run codex with --search
@@ -88,6 +99,7 @@ Notes:
 - Codex exec automatically applies repo-scoped AGENTS.md instructions from the active workspace. Paperclip cannot suppress that discovery in exec mode, so repo AGENTS.md files may still apply even when you only configured an explicit instructionsFilePath.
 - Paperclip injects desired local skills into the effective CODEX_HOME/skills/ directory at execution time so Codex can discover "$paperclip" and related skills without polluting the project working directory. In managed-home mode (the default) this is ~/.paperclip/instances/<id>/companies/<companyId>/codex-home/skills/; when CODEX_HOME is explicitly overridden in adapter config, that override is used instead.
 - Unless explicitly overridden in adapter config, Paperclip runs Codex with a per-company managed CODEX_HOME under the active Paperclip instance and seeds auth/config from the shared Codex home (the CODEX_HOME env var, when set, or ~/.codex).
+- For BytePlus ModelArk, set codexProvider=modelark, model=${CODEX_LOCAL_MODELARK_MODEL}, and provide ${CODEX_LOCAL_MODELARK_ENV_KEY} in env. Paperclip passes Codex overrides for model_provider, model_providers.modelark.base_url, env_key, and wire_api without changing the default OpenAI path.
 - Some model/tool combinations reject certain effort levels (for example minimal with web search enabled).
 - Fast mode is supported on GPT-5.4 and manual model IDs. When enabled for those models, Paperclip applies \`service_tier="fast"\` and \`features.fast_mode=true\`.
 - When Paperclip realizes a workspace/runtime for a run, it injects PAPERCLIP_WORKSPACE_* and PAPERCLIP_RUNTIME_* env vars for agent-side tooling.

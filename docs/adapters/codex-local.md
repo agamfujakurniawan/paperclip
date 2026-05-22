@@ -8,7 +8,8 @@ The `codex_local` adapter runs OpenAI's Codex CLI locally. It supports session p
 ## Prerequisites
 
 - Codex CLI installed (`codex` command available)
-- `OPENAI_API_KEY` set in the environment or agent config
+- For default OpenAI: `OPENAI_API_KEY` set in the environment or agent config, or a native Codex login in `CODEX_HOME`
+- For BytePlus ModelArk/custom OpenAI-compatible providers: the provider API key env var set in the environment or agent config, for example `ARK_API_KEY`
 
 ## Configuration Fields
 
@@ -18,6 +19,12 @@ The `codex_local` adapter runs OpenAI's Codex CLI locally. It supports session p
 | `model` | string | No | Model to use |
 | `promptTemplate` | string | No | Prompt used for all runs |
 | `env` | object | No | Environment variables (supports secret refs) |
+| `codexProvider` | string | No | Provider mode: omitted/`openai` uses Codex's default OpenAI provider, `modelark` configures BytePlus ModelArk, `custom_openai` uses the custom provider fields below |
+| `codexProviderId` | string | No | Custom provider id for `custom_openai`, used in Codex `model_providers.<id>` overrides |
+| `codexProviderName` | string | No | Custom provider display name |
+| `codexProviderBaseUrl` | string | No | Custom OpenAI-compatible API base URL |
+| `codexProviderEnvKey` | string | No | Environment variable Codex should read for the provider API key |
+| `codexProviderWireApi` | string | No | Codex wire API override; current Codex releases only support `responses`, which Paperclip applies by default |
 | `timeoutSec` | number | No | Process timeout (0 = no timeout) |
 | `graceSec` | number | No | Grace period before force-kill |
 | `fastMode` | boolean | No | Enables Codex Fast mode. Currently supported on `gpt-5.4` only and burns credits faster |
@@ -40,6 +47,32 @@ When `fastMode` is enabled, Paperclip adds Codex config overrides equivalent to:
 ```
 
 Paperclip currently applies that only when the selected model is `gpt-5.4`. On other models, the toggle is preserved in config but ignored at execution time to avoid unsupported runs.
+
+## OpenAI-Compatible Providers
+
+By default, Paperclip does not add any provider overrides and Codex uses its built-in OpenAI configuration. To use BytePlus ModelArk, set:
+
+```json
+{
+  "codexProvider": "modelark",
+  "model": "deepseek-v3-2-251201",
+  "env": {
+    "ARK_API_KEY": { "type": "secret_ref", "secretId": "...", "version": "latest" }
+  }
+}
+```
+
+Paperclip then runs Codex with overrides equivalent to:
+
+```sh
+-c 'model_provider="modelark"' \
+-c 'model_providers.modelark.name="BytePlus ModelArk"' \
+-c 'model_providers.modelark.base_url="https://ark.ap-southeast.bytepluses.com/api/v3"' \
+-c 'model_providers.modelark.env_key="ARK_API_KEY"' \
+-c 'model_providers.modelark.wire_api="responses"'
+```
+
+For another OpenAI-compatible endpoint, use `codexProvider: "custom_openai"` with `codexProviderId`, `codexProviderBaseUrl`, `codexProviderEnvKey`, and optionally `codexProviderName`. Paperclip defaults `codexProviderWireApi` to `responses`, which is the only custom-provider wire API currently documented by Codex.
 
 ## Managed `CODEX_HOME`
 

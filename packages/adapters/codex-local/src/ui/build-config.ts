@@ -1,5 +1,10 @@
 import type { CreateConfigValues } from "@paperclipai/adapter-utils";
 import {
+  CODEX_LOCAL_DEFAULT_PROVIDER_WIRE_API,
+  CODEX_LOCAL_MODELARK_MODEL,
+  CODEX_LOCAL_PROVIDER_CUSTOM_OPENAI,
+  CODEX_LOCAL_PROVIDER_MODELARK,
+  CODEX_LOCAL_PROVIDER_OPENAI,
   DEFAULT_CODEX_LOCAL_BYPASS_APPROVALS_AND_SANDBOX,
   DEFAULT_CODEX_LOCAL_MODEL,
 } from "../index.js";
@@ -66,11 +71,49 @@ function parseJsonObject(text: string): Record<string, unknown> | null {
   }
 }
 
+function parseRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function readWireApi(record: Record<string, unknown>): string {
+  const wireApi = readString(record, "codexProviderWireApi");
+  return wireApi === CODEX_LOCAL_DEFAULT_PROVIDER_WIRE_API
+    ? wireApi
+    : CODEX_LOCAL_DEFAULT_PROVIDER_WIRE_API;
+}
+
 export function buildCodexLocalConfig(v: CreateConfigValues): Record<string, unknown> {
   const ac: Record<string, unknown> = {};
+  const adapterSchemaValues = parseRecord(v.adapterSchemaValues);
+  const codexProvider = readString(adapterSchemaValues, "codexProvider") || CODEX_LOCAL_PROVIDER_OPENAI;
   if (v.cwd) ac.cwd = v.cwd;
   if (v.instructionsFilePath) ac.instructionsFilePath = v.instructionsFilePath;
-  ac.model = v.model || DEFAULT_CODEX_LOCAL_MODEL;
+  ac.model =
+    codexProvider === CODEX_LOCAL_PROVIDER_MODELARK && (!v.model || v.model === DEFAULT_CODEX_LOCAL_MODEL)
+      ? CODEX_LOCAL_MODELARK_MODEL
+      : v.model || DEFAULT_CODEX_LOCAL_MODEL;
+  if (codexProvider === CODEX_LOCAL_PROVIDER_MODELARK) {
+    ac.codexProvider = CODEX_LOCAL_PROVIDER_MODELARK;
+  } else if (codexProvider === CODEX_LOCAL_PROVIDER_CUSTOM_OPENAI) {
+    ac.codexProvider = CODEX_LOCAL_PROVIDER_CUSTOM_OPENAI;
+    const providerId = readString(adapterSchemaValues, "codexProviderId");
+    const providerName = readString(adapterSchemaValues, "codexProviderName");
+    const providerBaseUrl = readString(adapterSchemaValues, "codexProviderBaseUrl");
+    const providerEnvKey = readString(adapterSchemaValues, "codexProviderEnvKey");
+    const providerWireApi = readWireApi(adapterSchemaValues);
+    if (providerId) ac.codexProviderId = providerId;
+    if (providerName) ac.codexProviderName = providerName;
+    if (providerBaseUrl) ac.codexProviderBaseUrl = providerBaseUrl;
+    if (providerEnvKey) ac.codexProviderEnvKey = providerEnvKey;
+    if (providerWireApi) ac.codexProviderWireApi = providerWireApi;
+  }
   if (v.thinkingEffort) ac.modelReasoningEffort = v.thinkingEffort;
   ac.timeoutSec = 0;
   ac.graceSec = 15;

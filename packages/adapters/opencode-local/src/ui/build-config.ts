@@ -1,4 +1,13 @@
 import type { CreateConfigValues } from "@paperclipai/adapter-utils";
+import {
+  DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL,
+  DEFAULT_OPENCODE_LOCAL_MODEL,
+  OPENCODE_LOCAL_MODELARK_MODEL,
+  OPENCODE_LOCAL_OPENAI_COMPATIBLE_NPM,
+  OPENCODE_LOCAL_PROVIDER_CUSTOM_OPENAI,
+  OPENCODE_LOCAL_PROVIDER_DEFAULT,
+  OPENCODE_LOCAL_PROVIDER_MODELARK,
+} from "../index.js";
 
 function parseCommaArgs(value: string): string[] {
   return value
@@ -50,11 +59,48 @@ function parseEnvBindings(bindings: unknown): Record<string, unknown> {
   return env;
 }
 
+function parseRecord(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function readString(record: Record<string, unknown>, key: string): string {
+  const value = record[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function shouldUseModelArkDefaultModel(model: string): boolean {
+  return !model || model === DEFAULT_OPENCODE_LOCAL_MODEL || model === DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL;
+}
+
 export function buildOpenCodeLocalConfig(v: CreateConfigValues): Record<string, unknown> {
   const ac: Record<string, unknown> = {};
+  const adapterSchemaValues = parseRecord(v.adapterSchemaValues);
+  const openCodeProvider = readString(adapterSchemaValues, "openCodeProvider") || OPENCODE_LOCAL_PROVIDER_DEFAULT;
   if (v.cwd) ac.cwd = v.cwd;
   if (v.instructionsFilePath) ac.instructionsFilePath = v.instructionsFilePath;
-  if (v.model) ac.model = v.model;
+  const model = openCodeProvider === OPENCODE_LOCAL_PROVIDER_MODELARK && shouldUseModelArkDefaultModel(v.model)
+    ? OPENCODE_LOCAL_MODELARK_MODEL
+    : v.model;
+  if (model) ac.model = model;
+  if (openCodeProvider === OPENCODE_LOCAL_PROVIDER_MODELARK) {
+    ac.openCodeProvider = OPENCODE_LOCAL_PROVIDER_MODELARK;
+  } else if (openCodeProvider === OPENCODE_LOCAL_PROVIDER_CUSTOM_OPENAI) {
+    ac.openCodeProvider = OPENCODE_LOCAL_PROVIDER_CUSTOM_OPENAI;
+    const providerId = readString(adapterSchemaValues, "openCodeProviderId");
+    const providerName = readString(adapterSchemaValues, "openCodeProviderName");
+    const providerBaseUrl = readString(adapterSchemaValues, "openCodeProviderBaseUrl");
+    const providerEnvKey = readString(adapterSchemaValues, "openCodeProviderEnvKey");
+    const providerModelId = readString(adapterSchemaValues, "openCodeProviderModelId");
+    const providerNpm = readString(adapterSchemaValues, "openCodeProviderNpm") || OPENCODE_LOCAL_OPENAI_COMPATIBLE_NPM;
+    if (providerId) ac.openCodeProviderId = providerId;
+    if (providerName) ac.openCodeProviderName = providerName;
+    if (providerBaseUrl) ac.openCodeProviderBaseUrl = providerBaseUrl;
+    if (providerEnvKey) ac.openCodeProviderEnvKey = providerEnvKey;
+    if (providerModelId) ac.openCodeProviderModelId = providerModelId;
+    if (providerNpm) ac.openCodeProviderNpm = providerNpm;
+  }
   if (v.thinkingEffort) ac.variant = v.thinkingEffort;
   ac.dangerouslySkipPermissions = v.dangerouslySkipPermissions;
   // OpenCode sessions can run until the CLI exits naturally; keep timeout disabled (0)

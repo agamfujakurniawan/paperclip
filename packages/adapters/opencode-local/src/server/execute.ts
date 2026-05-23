@@ -52,7 +52,13 @@ import {
 } from "./models.js";
 import { removeMaintainerOnlySkillSymlinks } from "@paperclipai/adapter-utils/server-utils";
 import { prepareOpenCodeRuntimeConfig } from "./runtime-config.js";
-import { SANDBOX_INSTALL_COMMAND } from "../index.js";
+import {
+  DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL,
+  DEFAULT_OPENCODE_LOCAL_MODEL,
+  OPENCODE_LOCAL_MODELARK_MODEL,
+  OPENCODE_LOCAL_PROVIDER_MODELARK,
+  SANDBOX_INSTALL_COMMAND,
+} from "../index.js";
 
 const __moduleDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -74,6 +80,17 @@ function parseModelProvider(model: string | null): string | null {
 
 function resolveOpenCodeBiller(env: Record<string, string>, provider: string | null): string {
   return inferOpenAiCompatibleBiller(env, null) ?? provider ?? "unknown";
+}
+
+function normalizeModelForOpenCodeProvider(config: Record<string, unknown>, configuredModel: string): string {
+  const provider = asString(config.openCodeProvider, "").trim();
+  if (
+    provider === OPENCODE_LOCAL_PROVIDER_MODELARK &&
+    (!configuredModel || configuredModel === DEFAULT_OPENCODE_LOCAL_MODEL || configuredModel === DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL)
+  ) {
+    return OPENCODE_LOCAL_MODELARK_MODEL;
+  }
+  return configuredModel;
 }
 
 const REMOTE_OPENCODE_MODELS_PROBE_DEFAULT_TIMEOUT_SEC = 20;
@@ -207,7 +224,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
     DEFAULT_PAPERCLIP_AGENT_PROMPT_TEMPLATE,
   );
   const command = asString(config.command, "opencode");
-  const model = asString(config.model, "").trim();
+  const model = normalizeModelForOpenCodeProvider(config, asString(config.model, "").trim());
   const variant = asString(config.variant, "").trim();
 
   const workspaceContext = parseObject(context.paperclipWorkspace);

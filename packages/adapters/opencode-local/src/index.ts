@@ -45,6 +45,17 @@ export const SANDBOX_INSTALL_COMMAND =
   'fi';
 
 export const DEFAULT_OPENCODE_LOCAL_MODEL = "openai/gpt-5.2-codex";
+export const DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL = "openai/gpt-5.1-codex-mini";
+export const OPENCODE_LOCAL_PROVIDER_DEFAULT = "default";
+export const OPENCODE_LOCAL_PROVIDER_MODELARK = "modelark";
+export const OPENCODE_LOCAL_PROVIDER_CUSTOM_OPENAI = "custom_openai";
+export const OPENCODE_LOCAL_MODELARK_PROVIDER_ID = "modelark";
+export const OPENCODE_LOCAL_MODELARK_PROVIDER_NAME = "BytePlus ModelArk";
+export const OPENCODE_LOCAL_MODELARK_BASE_URL = "https://ark.ap-southeast.bytepluses.com/api/v3";
+export const OPENCODE_LOCAL_MODELARK_ENV_KEY = "ARK_API_KEY";
+export const OPENCODE_LOCAL_MODELARK_MODEL_ID = "deepseek-v3-2-251201";
+export const OPENCODE_LOCAL_MODELARK_MODEL = `${OPENCODE_LOCAL_MODELARK_PROVIDER_ID}/${OPENCODE_LOCAL_MODELARK_MODEL_ID}`;
+export const OPENCODE_LOCAL_OPENAI_COMPATIBLE_NPM = "@ai-sdk/openai-compatible";
 
 export function isValidOpenCodeModelId(value: unknown): value is string {
   if (typeof value !== "string") return false;
@@ -54,11 +65,12 @@ export function isValidOpenCodeModelId(value: unknown): value is string {
 }
 
 export const models: Array<{ id: string; label: string }> = [
+  { id: OPENCODE_LOCAL_MODELARK_MODEL, label: `${OPENCODE_LOCAL_MODELARK_PROVIDER_NAME} (${OPENCODE_LOCAL_MODELARK_MODEL_ID})` },
   { id: DEFAULT_OPENCODE_LOCAL_MODEL, label: DEFAULT_OPENCODE_LOCAL_MODEL },
   { id: "openai/gpt-5.4", label: "openai/gpt-5.4" },
   { id: "openai/gpt-5.2", label: "openai/gpt-5.2" },
   { id: "openai/gpt-5.1-codex-max", label: "openai/gpt-5.1-codex-max" },
-  { id: "openai/gpt-5.1-codex-mini", label: "openai/gpt-5.1-codex-mini" },
+  { id: DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL, label: DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL },
 ];
 
 export const modelProfiles: AdapterModelProfileDefinition[] = [
@@ -67,7 +79,7 @@ export const modelProfiles: AdapterModelProfileDefinition[] = [
     label: "Cheap",
     description: "Use OpenCode's known Codex mini model as the budget lane.",
     adapterConfig: {
-      model: "openai/gpt-5.1-codex-mini",
+      model: DEFAULT_OPENCODE_LOCAL_CHEAP_MODEL,
       variant: "low",
     },
     source: "adapter_default",
@@ -92,6 +104,8 @@ Core fields:
 - cwd (string, optional): default absolute working directory fallback for the agent process (created if missing when possible)
 - instructionsFilePath (string, optional): absolute path to a markdown instructions file prepended to the run prompt
 - model (string, required): OpenCode model id in provider/model format (for example anthropic/claude-sonnet-4-5)
+- openCodeProvider (string, optional): provider setup preset (default|modelark|custom_openai). modelark/custom_openai inject runtime opencode.json provider config.
+- openCodeProviderId/name/baseUrl/envKey/modelId/npm (strings, optional): custom_openai provider details. npm defaults to @ai-sdk/openai-compatible.
 - variant (string, optional): provider-specific reasoning/profile variant passed as --variant (for example minimal|low|medium|high|xhigh|max)
 - dangerouslySkipPermissions (boolean, optional): inject a runtime OpenCode config that allows \`external_directory\` access without interactive prompts; defaults to true for unattended Paperclip runs
 - promptTemplate (string, optional): run prompt template
@@ -106,6 +120,7 @@ Operational fields:
 Notes:
 - OpenCode supports multiple providers and models. Use \
   \`opencode models\` to list available options in provider/model format.
+- BytePlus ModelArk can be used by setting openCodeProvider=modelark, model=${OPENCODE_LOCAL_MODELARK_MODEL}, and ${OPENCODE_LOCAL_MODELARK_ENV_KEY} in env. Paperclip injects a runtime OpenCode provider config using ${OPENCODE_LOCAL_OPENAI_COMPATIBLE_NPM}.
 - Paperclip requires an explicit \`model\` value for \`opencode_local\` agents.
 - Runs are executed with: opencode run --format json ...
 - Sessions are resumed with --session when stored session cwd matches current cwd.

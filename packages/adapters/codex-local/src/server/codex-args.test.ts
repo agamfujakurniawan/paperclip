@@ -11,6 +11,32 @@ import {
 } from "../index.js";
 import { buildCodexExecArgs } from "./codex-args.js";
 
+const modelArkTextOnlyArgs = [
+  "--ignore-user-config",
+  "--ignore-rules",
+  "--ephemeral",
+  "-c",
+  'web_search="disabled"',
+  "-c",
+  "features.multi_agent=false",
+  "-c",
+  "features.multi_agent_v2=false",
+  "-c",
+  "features.apps=false",
+  "-c",
+  "features.enable_mcp_apps=false",
+  "-c",
+  "features.plugins=false",
+  "-c",
+  "features.tool_suggest=false",
+  "-c",
+  "features.image_generation=false",
+  "-c",
+  "features.shell_tool=false",
+  "-c",
+  "features.unified_exec=false",
+];
+
 describe("buildCodexExecArgs", () => {
   it("enables Codex fast mode overrides for GPT-5.4", () => {
     const result = buildCodexExecArgs({
@@ -105,6 +131,7 @@ describe("buildCodexExecArgs", () => {
     expect(result.args).toEqual([
       "exec",
       "--json",
+      ...modelArkTextOnlyArgs,
       "--model",
       CODEX_LOCAL_MODELARK_MODEL,
       "-c",
@@ -117,6 +144,8 @@ describe("buildCodexExecArgs", () => {
       `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.env_key=${JSON.stringify(CODEX_LOCAL_MODELARK_ENV_KEY)}`,
       "-c",
       `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.wire_api="responses"`,
+      "-c",
+      `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.supports_websockets=false`,
       "-",
     ]);
   });
@@ -132,6 +161,7 @@ describe("buildCodexExecArgs", () => {
     expect(result.args).toEqual([
       "exec",
       "--json",
+      ...modelArkTextOnlyArgs,
       "--model",
       CODEX_LOCAL_MODELARK_MODEL,
       "-c",
@@ -146,6 +176,8 @@ describe("buildCodexExecArgs", () => {
       `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.env_key=${JSON.stringify(CODEX_LOCAL_MODELARK_ENV_KEY)}`,
       "-c",
       `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.wire_api="responses"`,
+      "-c",
+      `model_providers.${CODEX_LOCAL_MODELARK_PROVIDER_ID}.supports_websockets=false`,
       "-",
     ]);
   });

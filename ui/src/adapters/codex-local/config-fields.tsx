@@ -210,6 +210,8 @@ export function CodexLocalConfigFields({
       {codexProvider === CODEX_LOCAL_PROVIDER_MODELARK && (
         <div className="rounded-md border border-sky-300/70 bg-sky-50/80 px-3 py-2 text-sm text-sky-900 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-100">
           ModelArk uses provider <code>{CODEX_LOCAL_MODELARK_PROVIDER_ID}</code>, base URL <code>{CODEX_LOCAL_MODELARK_BASE_URL}</code>, env key <code>{CODEX_LOCAL_MODELARK_ENV_KEY}</code>, and model <code>{CODEX_LOCAL_MODELARK_MODEL}</code>. Add <code>{CODEX_LOCAL_MODELARK_ENV_KEY}</code> below in Environment variables.
+          <br />
+          ModelArk runs in text-only compatibility mode because it rejects Codex namespace tools. Use OpenAI default for full Codex tool execution.
         </div>
       )}
       {codexProvider === CODEX_LOCAL_PROVIDER_CUSTOM_OPENAI && (

@@ -545,6 +545,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const runtimeSessionCwd = asString(runtimeSessionParams.cwd, "");
   const runtimeRemoteExecution = parseObject(runtimeSessionParams.remoteExecution);
   const canResumeSession =
+    !modelProvider?.textOnlyCompatibilityMode &&
     runtimeSessionId.length > 0 &&
     (runtimeSessionCwd.length === 0 || path.resolve(runtimeSessionCwd) === path.resolve(effectiveExecutionCwd)) &&
     adapterExecutionTargetSessionMatches(runtimeRemoteExecution, runtimeExecutionTarget);
@@ -669,12 +670,25 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       "Added --skip-git-repo-check for sandbox execution because Codex requires an explicit trust bypass in headless remote workspaces.",
     );
   }
+  if (modelProvider?.textOnlyCompatibilityMode) {
+    commandNotes.push(
+      `Using ${modelProvider.name} in text-only compatibility mode because this provider rejects Codex namespace tools.`,
+    );
+  }
+  const textOnlyCompatibilityPrompt = modelProvider?.textOnlyCompatibilityMode
+    ? [
+        `You are running on ${modelProvider.name} through Codex text-only compatibility mode.`,
+        "Do not call tools, shell commands, MCP servers, subagents, or external commands.",
+        "Produce the requested work directly in your final answer. If the task asks you to delegate, write the delegated sections yourself under clear role headings.",
+      ].join("\n")
+    : "";
   const renderedPrompt = shouldUseResumeDeltaPrompt ? "" : renderTemplate(promptTemplate, templateData);
   const sessionHandoffNote = asString(context.paperclipSessionHandoffMarkdown, "").trim();
   const prompt = joinPromptSections([
     promptInstructionsPrefix,
     renderedBootstrapPrompt,
     wakePrompt,
+    textOnlyCompatibilityPrompt,
     codexFallbackHandoffNote,
     sessionHandoffNote,
     renderedPrompt,
@@ -743,11 +757,12 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       },
       rawStderr: proc.stderr,
       parsed: parseCodexJsonl(proc.stdout),
+      model: execArgs.model,
     };
   };
 
   const toResult = (
-    attempt: { proc: { exitCode: number | null; signal: string | null; timedOut: boolean; stdout: string; stderr: string }; rawStderr: string; parsed: ReturnType<typeof parseCodexJsonl> },
+    attempt: { proc: { exitCode: number | null; signal: string | null; timedOut: boolean; stdout: string; stderr: string }; rawStderr: string; parsed: ReturnType<typeof parseCodexJsonl>; model: string },
     clearSessionOnMissingSession = false,
     isRetry = false,
   ): AdapterExecutionResult => {
@@ -821,7 +836,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
       sessionDisplayId: resolvedSessionId,
       provider: modelProvider?.id ?? "openai",
       biller: resolveCodexBiller(effectiveEnv, billingType, modelProvider?.id ?? null),
-      model,
+      model: attempt.model || model,
       billingType,
       costUsd: null,
       resultJson: {

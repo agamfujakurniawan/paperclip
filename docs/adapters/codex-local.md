@@ -65,12 +65,28 @@ By default, Paperclip does not add any provider overrides and Codex uses its bui
 Paperclip then runs Codex with overrides equivalent to:
 
 ```sh
+--ignore-user-config \
+--ignore-rules \
+--ephemeral \
 -c 'model_provider="modelark"' \
 -c 'model_providers.modelark.name="BytePlus ModelArk"' \
 -c 'model_providers.modelark.base_url="https://ark.ap-southeast.bytepluses.com/api/v3"' \
 -c 'model_providers.modelark.env_key="ARK_API_KEY"' \
--c 'model_providers.modelark.wire_api="responses"'
+-c 'model_providers.modelark.wire_api="responses"' \
+-c 'model_providers.modelark.supports_websockets=false' \
+-c 'web_search="disabled"' \
+-c 'features.multi_agent=false' \
+-c 'features.multi_agent_v2=false' \
+-c 'features.apps=false' \
+-c 'features.enable_mcp_apps=false' \
+-c 'features.plugins=false' \
+-c 'features.tool_suggest=false' \
+-c 'features.image_generation=false' \
+-c 'features.shell_tool=false' \
+-c 'features.unified_exec=false'
 ```
+
+ModelArk is intentionally run in text-only compatibility mode because Codex custom providers default to namespace-capable tools, while ModelArk currently rejects `tool.type="namespace"`. Paperclip disables Codex MCP/app/subagent/shell tool features for this preset and captures the final response directly. Use the default OpenAI provider when you need full Codex tool execution.
 
 For another OpenAI-compatible endpoint, use `codexProvider: "custom_openai"` with `codexProviderId`, `codexProviderBaseUrl`, `codexProviderEnvKey`, and optionally `codexProviderName`. Paperclip defaults `codexProviderWireApi` to `responses`, which is the only custom-provider wire API currently documented by Codex.
 

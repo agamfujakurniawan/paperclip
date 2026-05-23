@@ -7,7 +7,11 @@ import {
   DEFAULT_CODEX_LOCAL_MODEL,
   isCodexLocalFastModeSupported,
 } from "../index.js";
-import { buildCodexModelProviderArgs, resolveCodexLocalModelProvider } from "./codex-provider.js";
+import {
+  buildCodexModelProviderArgs,
+  buildCodexTextOnlyCompatibilityArgs,
+  resolveCodexLocalModelProvider,
+} from "./codex-provider.js";
 
 export type BuildCodexExecArgsResult = {
   args: string[];
@@ -68,6 +72,9 @@ export function buildCodexExecArgs(
   const fastModeApplied = fastModeRequested && isCodexLocalFastModeSupported(model);
 
   const args = ["exec", "--json"];
+  if (modelProvider?.textOnlyCompatibilityMode) {
+    args.push(...buildCodexTextOnlyCompatibilityArgs());
+  }
   if (options.skipGitRepoCheck) args.push("--skip-git-repo-check");
   if (search) args.unshift("--search");
   if (bypass) args.push("--dangerously-bypass-approvals-and-sandbox");

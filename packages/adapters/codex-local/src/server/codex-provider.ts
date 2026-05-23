@@ -15,6 +15,8 @@ export type CodexLocalResolvedModelProvider = {
   baseUrl: string;
   envKey: string;
   wireApi: string;
+  supportsWebsockets?: boolean;
+  textOnlyCompatibilityMode?: boolean;
 };
 
 const CODEX_PROVIDER_ID_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -49,6 +51,8 @@ export function resolveCodexLocalModelProvider(
       baseUrl: CODEX_LOCAL_MODELARK_BASE_URL,
       envKey: CODEX_LOCAL_MODELARK_ENV_KEY,
       wireApi: CODEX_LOCAL_DEFAULT_PROVIDER_WIRE_API,
+      supportsWebsockets: false,
+      textOnlyCompatibilityMode: true,
     };
   }
 
@@ -83,5 +87,36 @@ export function buildCodexModelProviderArgs(
     `${prefix}.env_key=${JSON.stringify(provider.envKey)}`,
     "-c",
     `${prefix}.wire_api=${JSON.stringify(provider.wireApi)}`,
+    ...(typeof provider.supportsWebsockets === "boolean"
+      ? ["-c", `${prefix}.supports_websockets=${provider.supportsWebsockets ? "true" : "false"}`]
+      : []),
+  ];
+}
+
+export function buildCodexTextOnlyCompatibilityArgs(): string[] {
+  return [
+    "--ignore-user-config",
+    "--ignore-rules",
+    "--ephemeral",
+    "-c",
+    'web_search="disabled"',
+    "-c",
+    "features.multi_agent=false",
+    "-c",
+    "features.multi_agent_v2=false",
+    "-c",
+    "features.apps=false",
+    "-c",
+    "features.enable_mcp_apps=false",
+    "-c",
+    "features.plugins=false",
+    "-c",
+    "features.tool_suggest=false",
+    "-c",
+    "features.image_generation=false",
+    "-c",
+    "features.shell_tool=false",
+    "-c",
+    "features.unified_exec=false",
   ];
 }
